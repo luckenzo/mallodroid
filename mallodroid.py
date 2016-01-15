@@ -25,8 +25,8 @@ from androguard.core.analysis import analysis
 from androguard.decompiler.dad import decompile
 from androguard.core.bytecodes.dvm import DalvikVMFormat
 from androguard.core.bytecodes.apk import APK
-from androguard.core.analysis.analysis import uVMAnalysis
-from androguard.core.analysis.ganalysis import GVMAnalysis
+from androguard.core.analysis.analysis import newVMAnalysis
+from androguard.core.analysis.analysis import ClassAnalysis
 
 import sys
 import os
@@ -110,11 +110,11 @@ def _get_javab64_xref(_class, _vmx):
 	_java_b64 = base64.b64encode(_get_java_code(_class, _vmx))
 	_xref = None
 	try:
-		_xref = _class.XREFfrom
+		_xref = ClassAnalysis(_class).get_xref_from()
 		if _xref:
 			_xref = [_m[0] for _m in _xref.items]
-	except AttributeError:
-		pass
+	except AttributeError as e:
+		print "Error {} occured".format(e)
 	return _java_b64, _xref
 
 def _check_trust_manager(_method, _vm, _vmx):
@@ -174,7 +174,7 @@ def _check_ssl_error(_method, _vm, _vmx):
 	
 	return _custom_on_received_ssl_error
 
-def _check_all(_vm, _vmx, _gx):
+def _check_all(_vm, _vmx):
 	
 	_custom_trust_manager = []
 	_insecure_socket_factory = []
@@ -247,6 +247,7 @@ def _print_result(_result, _java=True):
 			print "\tCustom HostnameVerifiers is implemented in class {:s}".format(_translate_class_name(_class_name))
 			if _hv['empty']:
 				print "\tImplements naive hostname verification. This HostnameVerifier breaks certificate validation!"
+			#for _ref in _tm['xref']:
 			for _ref in _hv['xref']:
 				print "\t\tReferenced in method {:s}->{:s}".format(_translate_class_name(_ref.get_class_name()), _ref.get_name())
 			if _java:
@@ -265,7 +266,7 @@ def _print_result(_result, _java=True):
 		if _java:
 			print "\t\tJavaSource code:"
 			print "{:s}".format(base64.b64decode(_aa['java_b64']))
-			
+
 	if len(_result['onreceivedsslerror']) > 0:
 		if len(_result['onreceivedsslerror']) == 1:
 			print "App extends WebViewClient:"
@@ -376,13 +377,11 @@ def _ensure_dir(_d):
 		os.makedirs(d)
 
 def _store_java(_vm, _args):
-	_vm.create_python_export()
-	_vmx = uVMAnalysis(_vm)
-	_gx = GVMAnalysis(_vmx, None)
+	_vmx = newVMAnalysis(_vm)
+	_vmx.create_xref()
 	_vm.set_vmanalysis(_vmx)
-	_vm.set_gvmanalysis(_gx)
-	_vm.create_dref(_vmx)
-	_vm.create_xref(_vmx)
+	_vm.create_python_export()
+	#_vm.create_dref(_vmx)
 
 	for _class in _vm.get_classes():
 		try:
@@ -415,22 +414,20 @@ def main():
 	print("Analyse file: {:s}".format(_args.file))
 	print("Package name: {:s}".format(_a.get_package()))
 	
+	#print("Output : {}".format(_a.get_dex()))
 	_vm = dvm.DalvikVMFormat(_a.get_dex())
-	_vmx = uVMAnalysis(_vm)
+	_vmx = newVMAnalysis(_vm)
 	
-	if 'INTERNET' in _vmx.get_permissions([]):
+	if 'android.permission.INTERNET' in _a.get_permissions():
 		print "App requires INTERNET permission. Continue analysis..."
 		
-		_vm.create_python_export()
-		_gx = GVMAnalysis(_vmx, None)
-
+		_vmx.create_xref()
 		_vm.set_vmanalysis(_vmx)
-		_vm.set_gvmanalysis(_gx)
-		_vm.create_dref(_vmx)
-		_vm.create_xref(_vmx)
+		_vm.create_python_export()
+		#_vm.create_dref(_vmx)
 		
 		_result = {'trustmanager' : [], 'hostnameverifier' : [], 'onreceivedsslerror' : []}
-		_result = _check_all(_vm, _vmx, _gx)
+		_result = _check_all(_vm, _vmx)
 		
 		if not _args.xml:
 			_print_result(_result, _java=_args.java)
