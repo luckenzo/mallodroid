@@ -387,7 +387,7 @@ def _store_java(_vm, _args):
 		try:
 			_ms = decompile.DvClass(_class, _vmx)
 			_ms.process()
-			_f = _file_name(_class.get_name(), _args.storejava)
+			_f = _file_name(_class.get_name(), _args.dir)
 			_ensure_dir(_f)
 			with open(_f, "w") as f:
 				_java = str(_ms.get_source())
