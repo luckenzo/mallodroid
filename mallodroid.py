@@ -25,7 +25,7 @@ from androguard.core.analysis import analysis
 from androguard.decompiler.dad import decompile
 from androguard.core.bytecodes.dvm import DalvikVMFormat
 from androguard.core.bytecodes.apk import APK
-from androguard.core.analysis.analysis import newVMAnalysis
+from androguard.core.analysis.analysis import Analysis
 from androguard.core.analysis.analysis import ClassAnalysis
 
 import sys
@@ -377,7 +377,7 @@ def _ensure_dir(_d):
 		os.makedirs(d)
 
 def _store_java(_vm, _args):
-	_vmx = newVMAnalysis(_vm)
+	_vmx = Analysis(_vm)
 	_vmx.create_xref()
 	_vm.set_vmanalysis(_vmx)
 	_vm.create_python_export()
@@ -416,7 +416,7 @@ def main():
 	
 	#print("Output : {}".format(_a.get_dex()))
 	_vm = dvm.DalvikVMFormat(_a.get_dex())
-	_vmx = newVMAnalysis(_vm)
+	_vmx = Analysis(_vm)
 	
 	if 'android.permission.INTERNET' in _a.get_permissions():
 		print "App requires INTERNET permission. Continue analysis..."
